@@ -16,16 +16,6 @@ define_months <- function(year) {
   return(months)
 }
 
-# Function to calculate earned premiums
-calculate_EP_Months <- function(data, year_months, month, year, cutoff_year) {
-  month_EP <- ifelse(data$Auth_year < cutoff_year, 0,
-                     (pmax(0, pmin(year_months[[month]]$end, data$EndDate) -
-                             pmax(year_months[[month]]$start, data$BegDate) + 1) /
-                        data$Duration) * data$Premium)
-  return(month_EP)
-}
-
-
 # Define helper functions used in calculations
 define_quarters <- function(year) {
   Q1_start <- mdy(paste('1/1/', year))
@@ -42,10 +32,99 @@ define_quarters <- function(year) {
               Q4_start = Q4_start, Q4_end = Q4_end))
 }
 
-calculate_EP_Quarters <- function(data, year_quarters, quarter, year, cutoff_year) {
-  quarter_EP <- ifelse(data$Auth_year < cutoff_year, 0,
-                       (pmax(0, pmin(year_quarters[[paste0(quarter, "_end")]], data$EndDate) -
-                               pmax(year_quarters[[paste0(quarter, "_start")]], data$BegDate) + 1) /
-                          data$Duration) * data$Premium)
-  return(quarter_EP)
+
+
+calculate_EP <- function(data, periods, period, year, cutoffYear) {
+  # Check if the period is a quarter (contains "Q") or a month
+  if (grepl("^Q[1-4]$", period)) {
+    # Quarterly Calculation
+    period_key_end <- paste0(period, "_end")
+    period_key_start <- paste0(period, "_start")
+    period_EP <- ifelse(
+      data$Auth_year < cutoffYear, 
+      0,
+      (pmax(0, pmin(periods[[period_key_end]], data$EndDate) -
+              pmax(periods[[period_key_start]], data$BegDate) + 1) /
+       data$Duration) * data$Premium
+    )
+  } else {
+    # Monthly Calculation
+    period_key_end <- "end"
+    period_key_start <- "start"
+    period_EP <- ifelse(
+      data$Auth_year < cutoffYear, 
+      0,
+      (pmax(0, pmin(periods[[period]]$end, data$EndDate) -
+              pmax(periods[[period]]$start, data$BegDate) + 1) /
+       data$Duration) * data$Premium
+    )
+  }
+
+  return(period_EP)
 }
+
+
+calculatePremiums <- function(data, startYear, endYear, endPeriod, timePeriod, cutoffYear) {
+  operations_done <- 0
+  
+  # Define total operations for progress tracking
+  total_operations <- if (timePeriod == "Monthly") {
+    12 * (endYear - startYear + 1)
+  } else {
+    4 * (endYear - startYear + 1)
+  }
+  
+  # Monthly EP Calculation
+  if (timePeriod == "Monthly") {
+    period_names <- c("January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December")
+    
+    for (yr in startYear:endYear) {
+      year_months <- define_months(yr)
+      months_to_iterate <- period_names
+      
+      if (yr == endYear && endPeriod != "All") {
+        end_index <- match(endPeriod, period_names)
+        months_to_iterate <- period_names[1:end_index]
+      }
+      
+      for (month in months_to_iterate) {
+        month_EP_col <- paste0(month, "_", yr, "_EP")
+        data[[month_EP_col]] <- calculate_EP(data, year_months, month, yr, cutoffYear)
+        operations_done <- operations_done + 1
+        
+        if (exists("setProgress")) {
+          setProgress(operations_done / total_operations)
+        }
+      }
+    }
+  }
+  
+  # Quarterly EP Calculation
+  if (timePeriod == "Quarterly") {
+    period_names <- c("Q1", "Q2", "Q3", "Q4")
+    
+    for (yr in startYear:endYear) {
+      year_quarters <- define_quarters(yr)
+      quarters_to_iterate <- period_names
+      
+      if (yr == endYear && endPeriod != "All") {
+        end_index <- match(endPeriod, period_names)
+        quarters_to_iterate <- period_names[1:end_index]
+      }
+      
+      for (quarter in quarters_to_iterate) {
+        quarter_EP_col <- paste0(quarter, "_", yr, "_EP")
+        data[[quarter_EP_col]] <- calculate_EP(data, year_quarters, quarter, yr, cutoffYear)
+        operations_done <- operations_done + 1
+        
+        if (exists("setProgress")) {
+          setProgress(operations_done / total_operations)
+        }
+      }
+    }
+  }
+  
+  return(data)
+}
+
