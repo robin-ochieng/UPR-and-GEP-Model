@@ -14,25 +14,14 @@ gepResultsUI <- function(id) {
           numericInput(ns("startYear"), "Select Start Year of Analysis", value = 2022, min = 2000, max = 3000),
           hr(),
           numericInput(ns("endYear"), "Select End Year of Analysis", value = 2023, min = 2000, max = 3000),
-          hr()
-        ),
-        fluidRow(
           hr(),
-          selectInput(ns("endYearMonth"), "Select Month for End Year of Analysis", 
-                      choices = c("All" = "All", 
-                                  "January" = "January", 
-                                  "February" = "February", 
-                                  "March" = "March", 
-                                  "April" = "April", 
-                                  "May" = "May", 
-                                  "June" = "June", 
-                                  "July" = "July", 
-                                  "August" = "August", 
-                                  "September" = "September", 
-                                  "October" = "October", 
-                                  "November" = "November", 
-                                  "December" = "December"), 
-                      selected = "All"),
+          ),
+          br(),
+         fluidRow(
+          hr(),
+          selectInput(ns("timePeriod"), "Select Time Period for Analysis", choices = c("Monthly", "Quarterly"), selected = "Monthly"),
+          hr(),
+          selectInput(ns("endPeriod"), "Select End Month/Quarter for Analysis", choices = c("All" = "All"), selected = "All"),
           hr()
         ),
         fluidRow(hr(), hr(),
@@ -56,36 +45,29 @@ gepResultsServer <- function(id, processedData, cutoffYear) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
+    observe({
+      req(input$timePeriod) 
+      if (input$timePeriod == "Monthly") {
+        updateSelectInput(session, "endPeriod", choices = c("All" = "All", month.name), selected = "All")
+      } else {  # Quarterly
+        updateSelectInput(session, "endPeriod", choices = c("All" = "All", "Q1" = "Q1", "Q2" = "Q2", "Q3" = "Q3", "Q4" = "Q4"), selected = "All")
+      }
+    })
 
     # Reactive function for summarizing data by IRA Class
     summaryData <- eventReactive(input$goButton, {
       req(processedData())
+      req(input$startYear)
+
       withProgress(message = 'Calculating summaries...', {
         setProgress(0)  # Initialize progress
         data <- processedData()
+        timePeriod <- input$timePeriod
+        cutoffYearVal <- cutoffYear()
         
-        total_operations <- length(input$startYear:input$endYear) * 12  # Assuming up to 12 months per year
-        operations_done <- 0
+        results <- calculatePremiums(data, input$startYear, input$endYear, input$endPeriod, timePeriod, cutoffYearVal)
         
-        for (yr in input$startYear:input$endYear) {
-          year_months <- define_months(yr)
-          if (yr == input$endYear && input$endYearMonth != "All") {
-            end_month_index <- match(input$endYearMonth, month.name)
-            months_to_iterate <- month.name[1:end_month_index]
-          } else {
-            months_to_iterate <- month.name
-          }
-          
-          for (month in months_to_iterate) {
-            month_EP_col <- paste0(month, "_", yr, "_EP")
-            data[[month_EP_col]] <- calculate_EP_Months(data, year_months, month, yr, cutoffYear())
-            operations_done <- operations_done + 1
-            setProgress(operations_done / total_operations)
-          }
-        }
-        
-        
-        summarized <- data %>%
+        summarized <- results %>%
           group_by(`IRA CLASS`) %>%
           summarize(across(contains("_EP"), sum, na.rm = TRUE))
         
