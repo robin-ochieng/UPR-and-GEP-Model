@@ -67,8 +67,8 @@ ui <- bs4DashPage(
     tags$head(
       includeCSS("www/css/custom_styles.css"),
       tags$link(href = "https://fonts.googleapis.com/css?family=Mulish", rel = "stylesheet"),
-      tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js")
-      
+      tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"),
+      tags$link(rel = "shortcut icon", href = "favicon/kenbright.ico", type = "image/x-icon")
     ),
     bs4TabItems(
       bs4TabItem(tabName = "dataOverview",
