@@ -22,7 +22,7 @@ uprSummariesUI <- function(id) {
             hr()),
         DTOutput(ns("classWiseUPR"))
       )
-    ),
+    ),  
     fluidRow(
       bs4Card(
         title = "Class-wise Gross UPR Plot",
@@ -30,6 +30,15 @@ uprSummariesUI <- function(id) {
         solidHeader = TRUE,
         width = 12,
         plotOutput(ns("classWiseUPRPlot"))
+      )
+    ),
+    fluidRow(
+      bs4Card(
+        title = "Class-wise DAC Plot",
+        status = "white",
+        solidHeader = TRUE,
+        width = 12,
+        plotOutput(ns("classWiseDACPlot"))
       )
     )
   )
@@ -121,6 +130,30 @@ uprSummariesServer <- function(id, processedData) {
         labs(title = "Class-wise Gross UPR Summary",
              x = "IRA Class",
              y = "Gross UPR Sum") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+              axis.text.x = element_text(angle = 0, hjust = 1),
+              legend.position = "none",
+              panel.grid = element_blank())
+    })
+
+
+        # Render the bar graph for class-wise UPR
+    output$classWiseDACPlot <- renderPlot({
+      req(classWiseUPR())
+      data <- classWiseUPR() %>%
+        mutate(`Class wise DAC Sum` = as.numeric(gsub(",", "", `Class wise DAC Sum`)))
+        # Order data by `Class wise DAC Sum` in descending order
+      data <- data %>%
+        mutate(`IRA CLASS` = reorder(`IRA CLASS`, -`Class wise DAC Sum`))
+
+      ggplot(data, aes(y = `IRA CLASS`, x = `Class wise DAC Sum`, fill = `IRA CLASS`)) +
+        geom_bar(stat = "identity", color = "black", fill = "#2575fc") +
+        geom_text(aes(label = paste0(round(`Class wise DAC Sum` / 1e6, 0), "M")),
+                  vjust = -0.5, color = "black", size = 3.7, hjust = -0.1) +
+        labs(title = "Class wise DAC Summary",
+             x = "IRA Class",
+             y = "DAC Sum") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
               axis.text.x = element_text(angle = 0, hjust = 1),
