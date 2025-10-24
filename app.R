@@ -22,15 +22,15 @@ options(shiny.maxRequestSize = 1000 * 1024^2)  # 100 MB
 
 # Define a custom theme using bslib
 my_theme <- bs_theme(
-  bg = "#202123", 
-  fg = "#E1E1E1", 
-  primary = "#EA80FC", 
-  secondary = "#00BFA5",
+  bg = "#F3F8FF",
+  fg = "#102A56",
+  primary = "#0137A6",
+  secondary = "#6EA8FE",
   base_font = font_google("Mulish"),
   heading_font = font_google("Mulish"),
   code_font = font_google("Mulish"),
-  navbar_bg = "#333333",  # Darker background for the navbar for contrast
-  navbar_fg = "#ffffff"  # White text color for readability
+  navbar_bg = "#F3F8FF",
+  navbar_fg = "#102A56"
 )
 
 # Define the User Interface for the Application
