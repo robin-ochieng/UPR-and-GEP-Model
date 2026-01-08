@@ -25,7 +25,8 @@ dataOverviewUI <- function(id) {
                          tags$li(class = "custom-list-item", icon("calendar-alt"), tags$b("EndDate: - "), " Is the policy end date Column."),
                          tags$li(class = "custom-list-item", icon("clipboard-check"), tags$b("AuthDate: - "), " Is the policy underwriting date Column."),
                          tags$li(class = "custom-list-item", icon("briefcase"), tags$b("IRA CLASS: - "), " Is the class of Business Column."),
-                         tags$li(class = "custom-list-item", icon("dollar-sign"), tags$b("Premium: - "), " Is the Premium Column.")
+                         tags$li(class = "custom-list-item", icon("dollar-sign"), tags$b("Premium: - "), " Is the Premium Column."),
+                         tags$li(class = "custom-list-item", icon("percent"), tags$b("Commission: - "), " Is the Commission Column.")
                        )
                      )
                    ),
