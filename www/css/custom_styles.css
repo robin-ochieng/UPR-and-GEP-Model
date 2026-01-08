@@ -211,6 +211,9 @@ a:focus {
   border-right: 1px solid rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
   
 /* Style container to remove list style and position correctly */
@@ -253,11 +256,11 @@ a:focus {
 .menu-container {
   display: block;
   position: relative;
-  top: 260px;
+  top: 0;
   left: 0;
   width: auto;
   padding: 20px 14px;
-  margin: 0 14px 24px 14px;
+  margin: 80px 14px 24px 14px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 0;
   font-family: 'Mulish', sans-serif;
