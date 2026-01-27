@@ -2,9 +2,27 @@
 uprSummariesUI <- function(id) {
   ns <- NS(id)
   tagList(
+    # Direct Business Section Header
+    fluidRow(
+      column(12, 
+        tags$h4("Direct Business Summary", class = "section-header", 
+                style = "margin-top: 20px; margin-bottom: 15px; font-weight: bold; color: #102A56;")
+      )
+    ),
     fluidRow(
       valueBoxOutput(ns("UPRSumBox"), width = 6),
       valueBoxOutput(ns("DACSumBox"), width = 6)
+    ),
+    # Reinsurance Section Header
+    fluidRow(
+      column(12, 
+        tags$h4("Reinsurance Summary", class = "section-header", 
+                style = "margin-top: 30px; margin-bottom: 15px; font-weight: bold; color: #0137A6;")
+      )
+    ),
+    fluidRow(
+      valueBoxOutput(ns("RIUPRSumBox"), width = 6),
+      valueBoxOutput(ns("RIDACSumBox"), width = 6)
     ),
     fluidRow(
       bs4Card(
@@ -28,8 +46,15 @@ uprSummariesUI <- function(id) {
         title = "Class-wise Gross UPR Plot",
         status = "white",
         solidHeader = TRUE,
-        width = 12,
+        width = 6,
         plotOutput(ns("classWiseUPRPlot"))
+      ),
+      bs4Card(
+        title = "Class-wise RI Gross UPR Plot",
+        status = "white",
+        solidHeader = TRUE,
+        width = 6,
+        plotOutput(ns("classWiseRIUPRPlot"))
       )
     ),
     fluidRow(
@@ -37,8 +62,15 @@ uprSummariesUI <- function(id) {
         title = "Class-wise DAC Plot",
         status = "white",
         solidHeader = TRUE,
-        width = 12,
+        width = 6,
         plotOutput(ns("classWiseDACPlot"))
+      ),
+      bs4Card(
+        title = "Class-wise RI DAC Plot",
+        status = "white",
+        solidHeader = TRUE,
+        width = 6,
+        plotOutput(ns("classWiseRIDACPlot"))
       )
     )
   )
@@ -76,6 +108,32 @@ uprSummariesServer <- function(id, processedData) {
       )
     })
 
+    # Calculate and display RI Gross UPR Sum
+    output$RIUPRSumBox <- renderValueBox({
+      req(input$calcClassWiseUPR, processedData())
+      ri_upr_sum <- sum(processedData()$RI_Gross_UPR, na.rm = TRUE)
+      formatted_ri_upr_sum <- comma(ri_upr_sum)
+      valueBox(
+        value = formatted_ri_upr_sum,
+        subtitle = "RI Gross UPR Sum",
+        icon = icon("shield-alt", class = "fa-2x", style = "color: white;"),
+        color = "white"
+      )
+    })
+
+    # Calculate and display RI DAC Sum
+    output$RIDACSumBox <- renderValueBox({
+      req(input$calcClassWiseUPR, processedData())
+      ri_dac_sum <- sum(processedData()$RI_DAC, na.rm = TRUE)
+      formatted_ri_dac_sum <- comma(ri_dac_sum)
+      valueBox(
+        value = formatted_ri_dac_sum,
+        subtitle = "RI DAC Sum",
+        icon = icon("handshake", class = "fa-2x", style = "color: white;"),
+        color = "white"
+      )
+    })
+
     # Reactive function for class-wise UPR summarization
     classWiseUPR <- eventReactive(input$calcClassWiseUPR, {
       req(processedData())
@@ -83,11 +141,15 @@ uprSummariesServer <- function(id, processedData) {
         group_by(`IRA CLASS`) %>%
         summarise(
           `Class wise Gross UPR Sum` = sum(Gross_UPR, na.rm = TRUE), 
-          `Class wise DAC Sum` = sum(DAC, na.rm = TRUE)
+          `Class wise DAC Sum` = sum(DAC, na.rm = TRUE),
+          `Class wise RI Gross UPR Sum` = sum(RI_Gross_UPR, na.rm = TRUE),
+          `Class wise RI DAC Sum` = sum(RI_DAC, na.rm = TRUE)
         ) %>%
         mutate(
           `Class wise Gross UPR Sum` = scales::comma(`Class wise Gross UPR Sum`), 
-          `Class wise DAC Sum` = scales::comma(`Class wise DAC Sum`)
+          `Class wise DAC Sum` = scales::comma(`Class wise DAC Sum`),
+          `Class wise RI Gross UPR Sum` = scales::comma(`Class wise RI Gross UPR Sum`),
+          `Class wise RI DAC Sum` = scales::comma(`Class wise RI DAC Sum`)
         )
     })
 
@@ -137,6 +199,28 @@ uprSummariesServer <- function(id, processedData) {
               panel.grid = element_blank())
     })
 
+    # Render the bar graph for class-wise RI UPR
+    output$classWiseRIUPRPlot <- renderPlot({
+      req(classWiseUPR())
+      data <- classWiseUPR() %>%
+        mutate(`Class wise RI Gross UPR Sum` = as.numeric(gsub(",", "", `Class wise RI Gross UPR Sum`)))
+      data <- data %>%
+        mutate(`IRA CLASS` = reorder(`IRA CLASS`, -`Class wise RI Gross UPR Sum`))
+
+      ggplot(data, aes(y = `IRA CLASS`, x = `Class wise RI Gross UPR Sum`, fill = `IRA CLASS`)) +
+        geom_bar(stat = "identity", color = "black", fill = "#28a745") +
+        geom_text(aes(label = paste0(round(`Class wise RI Gross UPR Sum` / 1e6, 0), "M")),
+                  vjust = -0.5, color = "black", size = 3.7, hjust = -0.1) +
+        labs(title = "Class-wise RI Gross UPR Summary",
+             x = "IRA Class",
+             y = "RI Gross UPR Sum") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+              axis.text.x = element_text(angle = 0, hjust = 1),
+              legend.position = "none",
+              panel.grid = element_blank())
+    })
+
 
         # Render the bar graph for class-wise UPR
     output$classWiseDACPlot <- renderPlot({
@@ -154,6 +238,28 @@ uprSummariesServer <- function(id, processedData) {
         labs(title = "Class wise DAC Summary",
              x = "IRA Class",
              y = "DAC Sum") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+              axis.text.x = element_text(angle = 0, hjust = 1),
+              legend.position = "none",
+              panel.grid = element_blank())
+    })
+
+    # Render the bar graph for class-wise RI DAC
+    output$classWiseRIDACPlot <- renderPlot({
+      req(classWiseUPR())
+      data <- classWiseUPR() %>%
+        mutate(`Class wise RI DAC Sum` = as.numeric(gsub(",", "", `Class wise RI DAC Sum`)))
+      data <- data %>%
+        mutate(`IRA CLASS` = reorder(`IRA CLASS`, -`Class wise RI DAC Sum`))
+
+      ggplot(data, aes(y = `IRA CLASS`, x = `Class wise RI DAC Sum`, fill = `IRA CLASS`)) +
+        geom_bar(stat = "identity", color = "black", fill = "#28a745") +
+        geom_text(aes(label = paste0(round(`Class wise RI DAC Sum` / 1e6, 0), "M")),
+                  vjust = -0.5, color = "black", size = 3.7, hjust = -0.1) +
+        labs(title = "Class wise RI DAC Summary",
+             x = "IRA Class",
+             y = "RI DAC Sum") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
               axis.text.x = element_text(angle = 0, hjust = 1),
