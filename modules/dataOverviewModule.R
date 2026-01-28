@@ -133,11 +133,11 @@ dataOverviewServer <- function(id) {
           Duration = as.numeric(difftime(EndDate, BegDate, units = "days")) + 1,
           Unearned_Duration = ifelse(BegDate <= Val_Date & EndDate >= Val_Date, as.numeric(difftime(EndDate, Val_Date, units = "days")), ifelse(BegDate > Val_Date, as.numeric(Duration), ifelse(EndDate <= Val_Date, 0, NA))),
           Earned_Duration = Duration - Unearned_Duration,
-          Gross_UPR= ifelse(Auth_year < input$cutoffYear, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Premium),
-          DAC= ifelse(Auth_year < input$cutoffYear, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Commission),
+          Gross_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Premium),
+          DAC= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Commission),
           GEP = (as.numeric(Earned_Duration)/as.numeric(Duration))*Premium,
-          RI_Gross_UPR= ifelse(Auth_year < input$cutoffYear, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Premium),
-          RI_DAC= ifelse(Auth_year < input$cutoffYear, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Commission)
+          RI_Gross_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Premium),
+          RI_DAC= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Commission)
         )
       setProgress(1)  # Complete the progress bar when done
       return(processed)

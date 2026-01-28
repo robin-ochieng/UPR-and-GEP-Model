@@ -57,6 +57,9 @@ ui <- bs4DashPage(
     bs4SidebarMenu(
       bs4SidebarMenuItem("Data Overview", tabName = "dataOverview", icon = icon("table")),
       bs4SidebarMenuItem("UPR Summaries", tabName = "uprSummaries", icon = icon("chart-bar")),
+      bs4SidebarMenuItem("LRC", tabName = "lrc", icon = icon("calculator")),
+      bs4SidebarMenuItem("ARC", tabName = "arc", icon = icon("coins")),
+      bs4SidebarMenuItem("Net LRC", tabName = "netLrc", icon = icon("balance-scale")),
       bs4SidebarMenuItem("GEP Results", tabName = "gepResults", icon = icon("chart-line"))
     )),
     div(class = "sidebar-logo",
@@ -76,6 +79,87 @@ ui <- bs4DashPage(
       ),
       bs4TabItem(tabName = "uprSummaries",
         uprSummariesUI("upr_summaries")                 
+      ),
+      bs4TabItem(tabName = "lrc",
+        fluidRow(
+          column(12,
+            tags$h4("Liability for Remaining Coverage (LRC)", class = "section-header", 
+                    style = "margin-top: 20px; margin-bottom: 15px; font-weight: bold; color: #102A56;")
+          )
+        ),
+        fluidRow(
+          bs4Card(
+            title = "Class-wise LRC Summary",
+            status = "white",
+            solidHeader = TRUE,
+            width = 12,
+            fluidRow(
+              hr(),
+              downloadButton("downloadLRC", "Download LRC Summary Table", class = "btn btn-primary btn-primary-custom")
+            ),
+            br(),
+            fluidRow(
+              hr(),
+              actionButton("calcLRC", "Calculate Class-wise LRC", class = "btn btn-primary btn-primary-custom"),
+              hr()
+            ),
+            DTOutput("lrcTable")
+          )
+        )
+      ),
+      bs4TabItem(tabName = "arc",
+        fluidRow(
+          column(12,
+            tags$h4("Asset for Remaining Coverage (ARC)", class = "section-header", 
+                    style = "margin-top: 20px; margin-bottom: 15px; font-weight: bold; color: #102A56;")
+          )
+        ),
+        fluidRow(
+          bs4Card(
+            title = "Class-wise ARC Summary",
+            status = "white",
+            solidHeader = TRUE,
+            width = 12,
+            fluidRow(
+              hr(),
+              downloadButton("downloadARC", "Download ARC Summary Table", class = "btn btn-primary btn-primary-custom")
+            ),
+            br(),
+            fluidRow(
+              hr(),
+              actionButton("calcARC", "Calculate Class-wise ARC", class = "btn btn-primary btn-primary-custom"),
+              hr()
+            ),
+            DTOutput("arcTable")
+          )
+        )
+      ),
+      bs4TabItem(tabName = "netLrc",
+        fluidRow(
+          column(12,
+            tags$h4("Net Liability for Remaining Coverage (Net LRC)", class = "section-header", 
+                    style = "margin-top: 20px; margin-bottom: 15px; font-weight: bold; color: #102A56;")
+          )
+        ),
+        fluidRow(
+          bs4Card(
+            title = "Class-wise Net LRC Summary",
+            status = "white",
+            solidHeader = TRUE,
+            width = 12,
+            fluidRow(
+              hr(),
+              downloadButton("downloadNetLRC", "Download Net LRC Summary Table", class = "btn btn-primary btn-primary-custom")
+            ),
+            br(),
+            fluidRow(
+              hr(),
+              actionButton("calcNetLRC", "Calculate Class-wise Net LRC", class = "btn btn-primary btn-primary-custom"),
+              hr()
+            ),
+            DTOutput("netLrcTable")
+          )
+        )
       ),
       bs4TabItem(tabName = "gepResults",
         gepResultsUI("gep_results")
@@ -102,6 +186,228 @@ server <- function(input, output, session) {
   uprSummariesServer("upr_summaries", processedData)
 
   gepResultsServer("gep_results", processedData, cutoffYear)
+
+  # LRC Tab Logic - Using reactiveValues for editable table
+  lrcValues <- reactiveValues(data = NULL)
+
+  observeEvent(input$calcLRC, {
+    req(processedData())
+    df <- processedData() %>%
+      group_by(`IRA CLASS`) %>%
+      summarise(
+        `Class wise Gross UPR Sum` = sum(Gross_UPR, na.rm = TRUE), 
+        `Class wise DAC Sum` = sum(DAC, na.rm = TRUE)
+      ) %>%
+      mutate(
+        `Premium Receivables` = 0,
+        `Bad Debt` = 0,
+        `LRC` = `Class wise Gross UPR Sum` - `Class wise DAC Sum` - `Premium Receivables` + `Bad Debt`
+      )
+    lrcValues$data <- df
+  })
+
+  # Handle cell edits for LRC table
+  observeEvent(input$lrcTable_cell_edit, {
+    info <- input$lrcTable_cell_edit
+    row <- info$row
+    col <- info$col + 1  # DT uses 0-based index, R uses 1-based
+    value <- as.numeric(gsub(",", "", info$value))  # Remove commas and convert to numeric
+    
+    if (is.na(value)) value <- 0
+    
+    # Update the value in the reactive data
+    if (col == 4) {  # Premium Receivables column
+      lrcValues$data[row, "Premium Receivables"] <- value
+    } else if (col == 5) {  # Bad Debt column
+      lrcValues$data[row, "Bad Debt"] <- value
+    }
+    
+    # Recalculate LRC for the edited row
+    lrcValues$data[row, "LRC"] <- lrcValues$data[row, "Class wise Gross UPR Sum"] - 
+                                   lrcValues$data[row, "Class wise DAC Sum"] - 
+                                   lrcValues$data[row, "Premium Receivables"] + 
+                                   lrcValues$data[row, "Bad Debt"]
+  })
+
+  output$lrcTable <- renderDT({
+    req(lrcValues$data)
+    
+    # Format data for display
+    displayData <- lrcValues$data %>%
+      mutate(
+        `Class wise Gross UPR Sum` = scales::comma(`Class wise Gross UPR Sum`),
+        `Class wise DAC Sum` = scales::comma(`Class wise DAC Sum`),
+        `Premium Receivables` = scales::comma(`Premium Receivables`),
+        `Bad Debt` = scales::comma(`Bad Debt`),
+        `LRC` = scales::comma(`LRC`)
+      )
+    
+    datatable(displayData, 
+      options = list(
+        pageLength = 30,
+        autoWidth = TRUE,
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+        class = 'cell-border stripe'
+      ),
+      rownames = FALSE,
+      editable = list(target = "cell", disable = list(columns = c(0, 1, 2, 5)))  # Only columns 3,4 (Premium Receivables, Bad Debt) editable
+    )
+  })
+
+  output$downloadLRC <- downloadHandler(
+    filename = function() {
+      paste("Class-wise-LRC-Summary-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      req(lrcValues$data)
+      # Format for download
+      downloadData <- lrcValues$data %>%
+        mutate(
+          `Class wise Gross UPR Sum` = scales::comma(`Class wise Gross UPR Sum`),
+          `Class wise DAC Sum` = scales::comma(`Class wise DAC Sum`),
+          `Premium Receivables` = scales::comma(`Premium Receivables`),
+          `Bad Debt` = scales::comma(`Bad Debt`),
+          `LRC` = scales::comma(`LRC`)
+        )
+      write.csv(downloadData, file, row.names = FALSE)
+    }
+  )
+
+  # ARC Tab Logic - Using reactiveValues for editable table
+  arcValues <- reactiveValues(data = NULL)
+
+  observeEvent(input$calcARC, {
+    req(processedData())
+    df <- processedData() %>%
+      group_by(`IRA CLASS`) %>%
+      summarise(
+        `Class wise RI Gross UPR Sum` = sum(RI_Gross_UPR, na.rm = TRUE), 
+        `Class wise RI DAC Sum` = sum(RI_DAC, na.rm = TRUE)
+      ) %>%
+      mutate(
+        `Premium Receivables` = 0,
+        `ARC` = `Class wise RI Gross UPR Sum` - `Class wise RI DAC Sum` - `Premium Receivables`
+      )
+    arcValues$data <- df
+  })
+
+  # Handle cell edits for ARC table
+  observeEvent(input$arcTable_cell_edit, {
+    info <- input$arcTable_cell_edit
+    row <- info$row
+    col <- info$col + 1  # DT uses 0-based index, R uses 1-based
+    value <- as.numeric(gsub(",", "", info$value))  # Remove commas and convert to numeric
+    
+    if (is.na(value)) value <- 0
+    
+    # Update the value in the reactive data
+    if (col == 4) {  # Premium Receivables column
+      arcValues$data[row, "Premium Receivables"] <- value
+    }
+    
+    # Recalculate ARC for the edited row
+    arcValues$data[row, "ARC"] <- arcValues$data[row, "Class wise RI Gross UPR Sum"] - 
+                                   arcValues$data[row, "Class wise RI DAC Sum"] - 
+                                   arcValues$data[row, "Premium Receivables"]
+  })
+
+  output$arcTable <- renderDT({
+    req(arcValues$data)
+    
+    # Format data for display
+    displayData <- arcValues$data %>%
+      mutate(
+        `Class wise RI Gross UPR Sum` = scales::comma(`Class wise RI Gross UPR Sum`),
+        `Class wise RI DAC Sum` = scales::comma(`Class wise RI DAC Sum`),
+        `Premium Receivables` = scales::comma(`Premium Receivables`),
+        `ARC` = scales::comma(`ARC`)
+      )
+    
+    datatable(displayData, 
+      options = list(
+        pageLength = 30,
+        autoWidth = TRUE,
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+        class = 'cell-border stripe'
+      ),
+      rownames = FALSE,
+      editable = list(target = "cell", disable = list(columns = c(0, 1, 2, 4)))  # Only column 3 (Premium Receivables) editable
+    )
+  })
+
+  output$downloadARC <- downloadHandler(
+    filename = function() {
+      paste("Class-wise-ARC-Summary-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      req(arcValues$data)
+      # Format for download
+      downloadData <- arcValues$data %>%
+        mutate(
+          `Class wise RI Gross UPR Sum` = scales::comma(`Class wise RI Gross UPR Sum`),
+          `Class wise RI DAC Sum` = scales::comma(`Class wise RI DAC Sum`),
+          `Premium Receivables` = scales::comma(`Premium Receivables`),
+          `ARC` = scales::comma(`ARC`)
+        )
+      write.csv(downloadData, file, row.names = FALSE)
+    }
+  )
+
+  # Net LRC Tab Logic
+  # Formula: Net LRC = LRC - ARC
+  # Where LRC = Gross UPR - DAC - Premium Receivables + Bad Debt (from LRC tab)
+  # And ARC = RI Gross UPR - RI DAC - Premium Receivables (from ARC tab)
+  # Reads values from the edited LRC and ARC tables
+  netLrcData <- eventReactive(input$calcNetLRC, {
+    req(lrcValues$data, arcValues$data)
+    
+    # Get LRC values (already has LRC calculated with user edits)
+    lrc_df <- lrcValues$data %>%
+      select(`IRA CLASS`, `LRC`)
+    
+    # Get ARC values (already has ARC calculated with user edits)
+    arc_df <- arcValues$data %>%
+      select(`IRA CLASS`, `ARC`)
+    
+    # Join and calculate Net LRC
+    result <- lrc_df %>%
+      left_join(arc_df, by = "IRA CLASS") %>%
+      mutate(
+        `Net LRC` = `LRC` - `ARC`
+      ) %>%
+      select(`IRA CLASS`, `Net LRC`) %>%
+      mutate(
+        `Net LRC` = scales::comma(`Net LRC`)
+      )
+    
+    result
+  })
+
+  output$netLrcTable <- renderDT({
+    req(netLrcData())
+    datatable(netLrcData(), 
+      options = list(
+        pageLength = 30,
+        autoWidth = TRUE,
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+        class = 'cell-border stripe'
+      ),
+      rownames = FALSE
+    )
+  })
+
+  output$downloadNetLRC <- downloadHandler(
+    filename = function() {
+      paste("Class-wise-Net-LRC-Summary-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      req(netLrcData())
+      write.csv(netLrcData(), file, row.names = FALSE)
+    }
+  )
 
 }
 
