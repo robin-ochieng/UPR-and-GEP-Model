@@ -165,6 +165,13 @@ ui <- bs4DashPage(
         gepResultsUI("gep_results")
       )
     )
+  ),
+  footer = bs4DashFooter(
+    left = tags$span(
+      style = "color: #0137A6; font-weight: 600;",
+      paste0("Developed by Kenbright AI © ", format(Sys.Date(), "%Y"))
+    ),
+    right = NULL
   )
 )
 
