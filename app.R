@@ -197,6 +197,24 @@ server <- function(input, output, session) {
   # LRC Tab Logic - Using reactiveValues for editable table
   lrcValues <- reactiveValues(data = NULL)
 
+  # Auto-calculate LRC when data is uploaded
+  observe({
+    req(processedData())
+    df <- processedData() %>%
+      group_by(`IRA CLASS`) %>%
+      summarise(
+        `Class wise Gross UPR Sum` = sum(Gross_UPR, na.rm = TRUE), 
+        `Class wise DAC Sum` = sum(DAC, na.rm = TRUE)
+      ) %>%
+      mutate(
+        `Premium Receivables` = 0,
+        `Bad Debt` = 0,
+        `LRC` = `Class wise Gross UPR Sum` - `Class wise DAC Sum` - `Premium Receivables` + `Bad Debt`
+      )
+    lrcValues$data <- df
+  })
+
+  # Also recalculate on button click (for manual refresh/reset after edits)
   observeEvent(input$calcLRC, {
     req(processedData())
     df <- processedData() %>%
@@ -284,6 +302,23 @@ server <- function(input, output, session) {
   # ARC Tab Logic - Using reactiveValues for editable table
   arcValues <- reactiveValues(data = NULL)
 
+  # Auto-calculate ARC when data is uploaded
+  observe({
+    req(processedData())
+    df <- processedData() %>%
+      group_by(`IRA CLASS`) %>%
+      summarise(
+        `Class wise RI Gross UPR Sum` = sum(RI_Gross_UPR, na.rm = TRUE), 
+        `Class wise RI DAC Sum` = sum(RI_DAC, na.rm = TRUE)
+      ) %>%
+      mutate(
+        `Premium Receivables` = 0,
+        `ARC` = `Class wise RI Gross UPR Sum` - `Class wise RI DAC Sum` - `Premium Receivables`
+      )
+    arcValues$data <- df
+  })
+
+  # Also recalculate on button click (for manual refresh/reset after edits)
   observeEvent(input$calcARC, {
     req(processedData())
     df <- processedData() %>%
@@ -367,7 +402,8 @@ server <- function(input, output, session) {
   # Where LRC = Gross UPR - DAC - Premium Receivables + Bad Debt (from LRC tab)
   # And ARC = RI Gross UPR - RI DAC - Premium Receivables (from ARC tab)
   # Reads values from the edited LRC and ARC tables
-  netLrcData <- eventReactive(input$calcNetLRC, {
+  # Auto-calculates when LRC and ARC data are available
+  netLrcData <- reactive({
     req(lrcValues$data, arcValues$data)
     
     # Get LRC values (already has LRC calculated with user edits)

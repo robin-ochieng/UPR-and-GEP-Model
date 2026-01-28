@@ -82,9 +82,9 @@ uprSummariesServer <- function(id, processedData) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
 
-    # Calculate and display Gross UPR Sum
+    # Calculate and display Gross UPR Sum - Auto-displays when data is available
     output$UPRSumBox <- renderValueBox({
-      req(input$calcClassWiseUPR, processedData())
+      req(processedData())
       upr_sum <- sum(processedData()$Gross_UPR, na.rm = TRUE)
       formatted_upr_sum <- comma(upr_sum)
       valueBox(
@@ -95,9 +95,9 @@ uprSummariesServer <- function(id, processedData) {
       )
     })
 
-    # Calculate and display DAC Sum
+    # Calculate and display DAC Sum - Auto-displays when data is available
     output$DACSumBox <- renderValueBox({
-      req(input$calcClassWiseUPR, processedData())
+      req(processedData())
       dac_sum <- sum(processedData()$DAC, na.rm = TRUE)
       formatted_dac_sum <- comma(dac_sum)
       valueBox(
@@ -108,9 +108,9 @@ uprSummariesServer <- function(id, processedData) {
       )
     })
 
-    # Calculate and display RI Gross UPR Sum
+    # Calculate and display RI Gross UPR Sum - Auto-displays when data is available
     output$RIUPRSumBox <- renderValueBox({
-      req(input$calcClassWiseUPR, processedData())
+      req(processedData())
       ri_upr_sum <- sum(processedData()$RI_Gross_UPR, na.rm = TRUE)
       formatted_ri_upr_sum <- comma(ri_upr_sum)
       valueBox(
@@ -121,9 +121,9 @@ uprSummariesServer <- function(id, processedData) {
       )
     })
 
-    # Calculate and display RI DAC Sum
+    # Calculate and display RI DAC Sum - Auto-displays when data is available
     output$RIDACSumBox <- renderValueBox({
-      req(input$calcClassWiseUPR, processedData())
+      req(processedData())
       ri_dac_sum <- sum(processedData()$RI_DAC, na.rm = TRUE)
       formatted_ri_dac_sum <- comma(ri_dac_sum)
       valueBox(
@@ -134,8 +134,8 @@ uprSummariesServer <- function(id, processedData) {
       )
     })
 
-    # Reactive function for class-wise UPR summarization
-    classWiseUPR <- eventReactive(input$calcClassWiseUPR, {
+    # Reactive function for class-wise UPR summarization - Auto-calculates when data is available
+    classWiseUPR <- reactive({
       req(processedData())
       processedData() %>%
         group_by(`IRA CLASS`) %>%

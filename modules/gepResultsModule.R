@@ -54,10 +54,25 @@ gepResultsServer <- function(id, processedData, cutoffYear) {
       }
     })
 
-    # Reactive function for summarizing data by IRA Class
-    summaryData <- eventReactive(input$goButton, {
+    # Reactive values to store the current parameters (for auto-calculation and manual refresh)
+    gepParams <- reactiveValues(
+      trigger = 0  # Used to force recalculation when button is clicked
+    )
+    
+    # Observe button click to trigger recalculation
+    observeEvent(input$goButton, {
+      gepParams$trigger <- gepParams$trigger + 1
+    })
+
+    # Reactive function for summarizing data by IRA Class - auto-calculates on data upload
+    summaryData <- reactive({
       req(processedData())
       req(input$startYear)
+      req(input$endYear)
+      req(input$timePeriod)
+      
+      # Also react to button clicks for manual refresh
+      gepParams$trigger
 
       withProgress(message = 'Calculating summaries...', {
         setProgress(0)  # Initialize progress
