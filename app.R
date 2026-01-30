@@ -12,7 +12,9 @@ library(scales)
 library(bslib)
 library(DT)
 library(shinycssloaders)
+library(shinyjs)
 
+source("modules/landingPageModule.R", local = TRUE)[1]
 source("modules/dataOverviewModule.R", local = TRUE)[1]
 source("modules/uprSummaries.R", local = TRUE)[1]
 source("modules/gepResultsModule.R", local = TRUE)[1]
@@ -57,6 +59,8 @@ ui <- bs4DashPage(
     tags$div(
       class = "menu-container",
     bs4SidebarMenu(
+      id = "sidebar",
+      bs4SidebarMenuItem("Home", tabName = "landing", icon = icon("home")),
       bs4SidebarMenuItem("Data Overview", tabName = "dataOverview", icon = icon("table")),
       bs4SidebarMenuItem("UPR Summaries", tabName = "uprSummaries", icon = icon("chart-bar")),
       bs4SidebarMenuItem("LRC", tabName = "lrc", icon = icon("calculator")),
@@ -69,13 +73,18 @@ ui <- bs4DashPage(
     )
   ),
   body = bs4DashBody(
+    shinyjs::useShinyjs(),
     tags$head(
       includeCSS("www/css/custom_styles.css"),
+      includeCSS("www/css/landing_page.css"),
       tags$link(href = "https://fonts.googleapis.com/css?family=Mulish", rel = "stylesheet"),
       tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"),
       tags$link(rel = "shortcut icon", href = "favicon/kenbright.ico", type = "image/x-icon")
     ),
     bs4TabItems(
+      bs4TabItem(tabName = "landing",
+        landingPageUI("landing_page")
+      ),
       bs4TabItem(tabName = "dataOverview",
         dataOverviewUI("data_overview")
       ),
@@ -182,6 +191,12 @@ ui <- bs4DashPage(
 
 # Define the server logic required to read the input and calculate outputs
 server <- function(input, output, session) {
+  
+  # Store parent session for module navigation
+  session$userData$parentSession <- session
+  
+  # Landing page server
+  landingPageServer("landing_page")
   
   observeEvent(input$toggleControlbar, {
     updateBoxSidebar("controlbar")
