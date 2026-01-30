@@ -38,7 +38,7 @@ uprSummariesUI <- function(id) {
             hr(),
             actionButton(ns("calcClassWiseUPR"), "Calculate  Class-wise UPR", class = "btn btn-primary btn-primary-custom"),
             hr()),
-        DTOutput(ns("classWiseUPR"))
+        withSpinner(DTOutput(ns("classWiseUPR")), type = 6, color = "#0137A6")
       )
     ),  
     fluidRow(
@@ -47,14 +47,14 @@ uprSummariesUI <- function(id) {
         status = "white",
         solidHeader = TRUE,
         width = 6,
-        plotOutput(ns("classWiseUPRPlot"))
+        withSpinner(plotOutput(ns("classWiseUPRPlot")), type = 6, color = "#0137A6")
       ),
       bs4Card(
         title = "Class-wise RI Gross UPR Plot",
         status = "white",
         solidHeader = TRUE,
         width = 6,
-        plotOutput(ns("classWiseRIUPRPlot"))
+        withSpinner(plotOutput(ns("classWiseRIUPRPlot")), type = 6, color = "#0137A6")
       )
     ),
     fluidRow(
@@ -63,14 +63,14 @@ uprSummariesUI <- function(id) {
         status = "white",
         solidHeader = TRUE,
         width = 6,
-        plotOutput(ns("classWiseDACPlot"))
+        withSpinner(plotOutput(ns("classWiseDACPlot")), type = 6, color = "#0137A6")
       ),
       bs4Card(
         title = "Class-wise RI DAC Plot",
         status = "white",
         solidHeader = TRUE,
         width = 6,
-        plotOutput(ns("classWiseRIDACPlot"))
+        withSpinner(plotOutput(ns("classWiseRIDACPlot")), type = 6, color = "#0137A6")
       )
     )
   )
@@ -137,14 +137,27 @@ uprSummariesServer <- function(id, processedData) {
     # Reactive function for class-wise UPR summarization - Auto-calculates when data is available
     classWiseUPR <- reactive({
       req(processedData())
-      processedData() %>%
+      data <- processedData() %>%
         group_by(`IRA CLASS`) %>%
         summarise(
           `Class wise Gross UPR Sum` = sum(Gross_UPR, na.rm = TRUE), 
           `Class wise DAC Sum` = sum(DAC, na.rm = TRUE),
           `Class wise RI Gross UPR Sum` = sum(RI_Gross_UPR, na.rm = TRUE),
           `Class wise RI DAC Sum` = sum(RI_DAC, na.rm = TRUE)
-        ) %>%
+        )
+      
+      # Add totals row
+      totals_row <- data.frame(
+        `IRA CLASS` = "TOTAL",
+        `Class wise Gross UPR Sum` = sum(data$`Class wise Gross UPR Sum`, na.rm = TRUE),
+        `Class wise DAC Sum` = sum(data$`Class wise DAC Sum`, na.rm = TRUE),
+        `Class wise RI Gross UPR Sum` = sum(data$`Class wise RI Gross UPR Sum`, na.rm = TRUE),
+        `Class wise RI DAC Sum` = sum(data$`Class wise RI DAC Sum`, na.rm = TRUE),
+        check.names = FALSE
+      )
+      data <- bind_rows(data, totals_row)
+      
+      data %>%
         mutate(
           `Class wise Gross UPR Sum` = scales::comma(`Class wise Gross UPR Sum`), 
           `Class wise DAC Sum` = scales::comma(`Class wise DAC Sum`),
@@ -161,7 +174,15 @@ uprSummariesServer <- function(id, processedData) {
         autoWidth = TRUE,
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-        class = 'cell-border stripe'
+        class = 'cell-border stripe',
+        rowCallback = JS(
+          "function(row, data, index) {",
+          "  if (data[0] === 'TOTAL') {",
+          "    $(row).css('font-weight', 'bold');",
+          "    $(row).css('background-color', '#E8F4FD');",
+          "  }",
+          "}"
+        )
       ))
     })
 

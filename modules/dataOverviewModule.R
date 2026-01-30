@@ -25,7 +25,8 @@ dataOverviewUI <- function(id) {
                          tags$li(class = "custom-list-item", icon("calendar-alt"), tags$b("EndDate: - "), " Is the policy end date Column."),
                          tags$li(class = "custom-list-item", icon("clipboard-check"), tags$b("AuthDate: - "), " Is the policy underwriting date Column."),
                          tags$li(class = "custom-list-item", icon("briefcase"), tags$b("IRA CLASS: - "), " Is the class of Business Column."),
-                         tags$li(class = "custom-list-item", icon("dollar-sign"), tags$b("Premium: - "), " Is the Premium Column."),
+                         tags$li(class = "custom-list-item", icon("dollar-sign"), tags$b("Gross Premium: - "), " Is the Gross Premium Column."),
+                         tags$li(class = "custom-list-item", icon("dollar-sign"), tags$b("Net Premium: - "), " Is the Net Premium Column."),
                          tags$li(class = "custom-list-item", icon("percent"), tags$b("Commission: - "), " Is the Commission Column."),
                          tags$li(class = "custom-list-item", icon("shield-alt"), tags$b("RI_Premium: - "), " Is the Reinsurance Premium Column."),
                          tags$li(class = "custom-list-item", icon("handshake"), tags$b("RI_Commission: - "), " Is the Reinsurance Commission Column.")
@@ -64,7 +65,8 @@ dataOverviewServer <- function(id) {
       if (file_extension %in% c("xlsx", "xls")) {
         df <- readxl::read_excel(inFile$datapath) %>%
         mutate(
-          Premium = as.numeric(Premium),
+          `Gross Premium` = as.numeric(`Gross Premium`),
+          `Net Premium` = as.numeric(`Net Premium`),
           Commission = as.numeric(Commission),
           RI_Premium = as.numeric(RI_Premium),
           RI_Commission = as.numeric(RI_Commission)
@@ -72,7 +74,8 @@ dataOverviewServer <- function(id) {
       } else if (file_extension == "csv") {
         df <- read_csv(inFile$datapath, 
                        col_types = cols(
-                         Premium = col_number(), 
+                         `Gross Premium` = col_number(),
+                         `Net Premium` = col_number(), 
                          AuthDate = col_character(),
                          BegDate = col_character(),
                          EndDate = col_character(), 
@@ -84,7 +87,7 @@ dataOverviewServer <- function(id) {
       }
         
         # Validate necessary columns
-        requiredColumns <- c("Premium", "AuthDate", "BegDate", "EndDate", "Commission", "IRA CLASS", "RI_Premium", "RI_Commission")
+        requiredColumns <- c("Gross Premium", "Net Premium", "AuthDate", "BegDate", "EndDate", "Commission", "IRA CLASS", "RI_Premium", "RI_Commission")
         if (!all(requiredColumns %in% names(df))) {
           stop("Data must contain the following columns: ", paste(requiredColumns, collapse=", "))
         }
@@ -133,9 +136,11 @@ dataOverviewServer <- function(id) {
           Duration = as.numeric(difftime(EndDate, BegDate, units = "days")) + 1,
           Unearned_Duration = ifelse(BegDate <= Val_Date & EndDate >= Val_Date, as.numeric(difftime(EndDate, Val_Date, units = "days")), ifelse(BegDate > Val_Date, as.numeric(Duration), ifelse(EndDate <= Val_Date, 0, NA))),
           Earned_Duration = Duration - Unearned_Duration,
-          Gross_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Premium),
+          Gross_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * `Gross Premium`),
+          Net_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * `Net Premium`),
           DAC= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * Commission),
-          GEP = (as.numeric(Earned_Duration)/as.numeric(Duration))*Premium,
+          GEP = (as.numeric(Earned_Duration)/as.numeric(Duration))*`Gross Premium`,
+          NEP = (as.numeric(Earned_Duration)/as.numeric(Duration))*`Net Premium`,
           RI_Gross_UPR= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Premium),
           RI_DAC= ifelse(AuthDate > Val_Date, 0, (as.numeric(Unearned_Duration)/as.numeric(Duration)) * RI_Commission)
         )

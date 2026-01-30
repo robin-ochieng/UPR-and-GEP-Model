@@ -45,7 +45,7 @@ calculate_EP <- function(data, periods, period, year, cutoffYear) {
       0,
       (pmax(0, pmin(periods[[period_key_end]], data$EndDate) -
               pmax(periods[[period_key_start]], data$BegDate) + 1) /
-       data$Duration) * data$Premium
+       data$Duration) * data$`Gross Premium`
     )
   } else {
     # Monthly Calculation
@@ -56,7 +56,37 @@ calculate_EP <- function(data, periods, period, year, cutoffYear) {
       0,
       (pmax(0, pmin(periods[[period]]$end, data$EndDate) -
               pmax(periods[[period]]$start, data$BegDate) + 1) /
-       data$Duration) * data$Premium
+       data$Duration) * data$`Gross Premium`
+    )
+  }
+
+  return(period_EP)
+}
+
+# Calculate Net Earned Premium for a single period
+calculate_Net_EP <- function(data, periods, period, year, cutoffYear) {
+  # Check if the period is a quarter (contains "Q") or a month
+  if (grepl("^Q[1-4]$", period)) {
+    # Quarterly Calculation
+    period_key_end <- paste0(period, "_end")
+    period_key_start <- paste0(period, "_start")
+    period_EP <- ifelse(
+      data$Auth_year < cutoffYear, 
+      0,
+      (pmax(0, pmin(periods[[period_key_end]], data$EndDate) -
+              pmax(periods[[period_key_start]], data$BegDate) + 1) /
+       data$Duration) * data$`Net Premium`
+    )
+  } else {
+    # Monthly Calculation
+    period_key_end <- "end"
+    period_key_start <- "start"
+    period_EP <- ifelse(
+      data$Auth_year < cutoffYear, 
+      0,
+      (pmax(0, pmin(periods[[period]]$end, data$EndDate) -
+              pmax(periods[[period]]$start, data$BegDate) + 1) /
+       data$Duration) * data$`Net Premium`
     )
   }
 
@@ -116,6 +146,72 @@ calculatePremiums <- function(data, startYear, endYear, endPeriod, timePeriod, c
       for (quarter in quarters_to_iterate) {
         quarter_EP_col <- paste0(quarter, "_", yr, "_EP")
         data[[quarter_EP_col]] <- calculate_EP(data, year_quarters, quarter, yr, cutoffYear)
+        operations_done <- operations_done + 1
+        
+        if (exists("setProgress")) {
+          setProgress(operations_done / total_operations)
+        }
+      }
+    }
+  }
+  
+  return(data)
+}
+
+
+# Calculate Net Earned Premiums for all periods
+calculateNetPremiums <- function(data, startYear, endYear, endPeriod, timePeriod, cutoffYear) {
+  operations_done <- 0
+  
+  # Define total operations for progress tracking
+  total_operations <- if (timePeriod == "Monthly") {
+    12 * (endYear - startYear + 1)
+  } else {
+    4 * (endYear - startYear + 1)
+  }
+  
+  # Monthly NEP Calculation
+  if (timePeriod == "Monthly") {
+    period_names <- c("January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December")
+    
+    for (yr in startYear:endYear) {
+      year_months <- define_months(yr)
+      months_to_iterate <- period_names
+      
+      if (yr == endYear && endPeriod != "All") {
+        end_index <- match(endPeriod, period_names)
+        months_to_iterate <- period_names[1:end_index]
+      }
+      
+      for (month in months_to_iterate) {
+        month_NEP_col <- paste0(month, "_", yr, "_NEP")
+        data[[month_NEP_col]] <- calculate_Net_EP(data, year_months, month, yr, cutoffYear)
+        operations_done <- operations_done + 1
+        
+        if (exists("setProgress")) {
+          setProgress(operations_done / total_operations)
+        }
+      }
+    }
+  }
+  
+  # Quarterly NEP Calculation
+  if (timePeriod == "Quarterly") {
+    period_names <- c("Q1", "Q2", "Q3", "Q4")
+    
+    for (yr in startYear:endYear) {
+      year_quarters <- define_quarters(yr)
+      quarters_to_iterate <- period_names
+      
+      if (yr == endYear && endPeriod != "All") {
+        end_index <- match(endPeriod, period_names)
+        quarters_to_iterate <- period_names[1:end_index]
+      }
+      
+      for (quarter in quarters_to_iterate) {
+        quarter_NEP_col <- paste0(quarter, "_", yr, "_NEP")
+        data[[quarter_NEP_col]] <- calculate_Net_EP(data, year_quarters, quarter, yr, cutoffYear)
         operations_done <- operations_done + 1
         
         if (exists("setProgress")) {

@@ -11,6 +11,7 @@ library(ggplot2)
 library(scales)
 library(bslib)
 library(DT)
+library(shinycssloaders)
 
 source("modules/dataOverviewModule.R", local = TRUE)[1]
 source("modules/uprSummaries.R", local = TRUE)[1]
@@ -36,6 +37,7 @@ my_theme <- bs_theme(
 # Define the User Interface for the Application
 ui <- bs4DashPage(
   dark = NULL,
+  title = "LRC Model",
   help = NULL,
   fullscreen = FALSE,
   scrollToTop = TRUE,
@@ -47,7 +49,7 @@ ui <- bs4DashPage(
     controlbarIcon = NULL,
     tags$li(
       class = "text-center header-title-container",  # Added a new class for more specific styling
-      tags$h4("UPR and GEP Model", class = "header-title")
+      tags$h4("LRC Model", class = "header-title")
     )
   ),
   sidebar = bs4DashSidebar(
@@ -103,7 +105,7 @@ ui <- bs4DashPage(
               actionButton("calcLRC", "Calculate Class-wise LRC", class = "btn btn-primary btn-primary-custom"),
               hr()
             ),
-            DTOutput("lrcTable")
+            withSpinner(DTOutput("lrcTable"), type = 6, color = "#0137A6")
           )
         )
       ),
@@ -130,7 +132,7 @@ ui <- bs4DashPage(
               actionButton("calcARC", "Calculate Class-wise ARC", class = "btn btn-primary btn-primary-custom"),
               hr()
             ),
-            DTOutput("arcTable")
+            withSpinner(DTOutput("arcTable"), type = 6, color = "#0137A6")
           )
         )
       ),
@@ -157,7 +159,7 @@ ui <- bs4DashPage(
               actionButton("calcNetLRC", "Calculate Class-wise Net LRC", class = "btn btn-primary btn-primary-custom"),
               hr()
             ),
-            DTOutput("netLrcTable")
+            withSpinner(DTOutput("netLrcTable"), type = 6, color = "#0137A6")
           )
         )
       ),
@@ -167,11 +169,12 @@ ui <- bs4DashPage(
     )
   ),
   footer = bs4DashFooter(
-    left = tags$span(
-      style = "color: #0137A6; font-weight: 600;",
+    left = NULL,
+    right = NULL,
+    tags$div(
+      style = "width: 100%; text-align: center; color: #0137A6; font-weight: 600; font-size: 12px;",
       paste0("Developed by Kenbright AI © ", format(Sys.Date(), "%Y"))
-    ),
-    right = NULL
+    )
   )
 )
 
@@ -211,6 +214,19 @@ server <- function(input, output, session) {
         `Bad Debt` = 0,
         `LRC` = `Class wise Gross UPR Sum` - `Class wise DAC Sum` - `Premium Receivables` + `Bad Debt`
       )
+    
+    # Add totals row
+    totals_row <- data.frame(
+      `IRA CLASS` = "TOTAL",
+      `Class wise Gross UPR Sum` = sum(df$`Class wise Gross UPR Sum`, na.rm = TRUE),
+      `Class wise DAC Sum` = sum(df$`Class wise DAC Sum`, na.rm = TRUE),
+      `Premium Receivables` = sum(df$`Premium Receivables`, na.rm = TRUE),
+      `Bad Debt` = sum(df$`Bad Debt`, na.rm = TRUE),
+      `LRC` = sum(df$`LRC`, na.rm = TRUE),
+      check.names = FALSE
+    )
+    df <- bind_rows(df, totals_row)
+    
     lrcValues$data <- df
   })
 
@@ -228,6 +244,19 @@ server <- function(input, output, session) {
         `Bad Debt` = 0,
         `LRC` = `Class wise Gross UPR Sum` - `Class wise DAC Sum` - `Premium Receivables` + `Bad Debt`
       )
+    
+    # Add totals row
+    totals_row <- data.frame(
+      `IRA CLASS` = "TOTAL",
+      `Class wise Gross UPR Sum` = sum(df$`Class wise Gross UPR Sum`, na.rm = TRUE),
+      `Class wise DAC Sum` = sum(df$`Class wise DAC Sum`, na.rm = TRUE),
+      `Premium Receivables` = sum(df$`Premium Receivables`, na.rm = TRUE),
+      `Bad Debt` = sum(df$`Bad Debt`, na.rm = TRUE),
+      `LRC` = sum(df$`LRC`, na.rm = TRUE),
+      check.names = FALSE
+    )
+    df <- bind_rows(df, totals_row)
+    
     lrcValues$data <- df
   })
 
@@ -273,7 +302,15 @@ server <- function(input, output, session) {
         autoWidth = TRUE,
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-        class = 'cell-border stripe'
+        class = 'cell-border stripe',
+        rowCallback = JS(
+          "function(row, data, index) {",
+          "  if (data[0] === 'TOTAL') {",
+          "    $(row).css('font-weight', 'bold');",
+          "    $(row).css('background-color', '#E8F4FD');",
+          "  }",
+          "}"
+        )
       ),
       rownames = FALSE,
       editable = list(target = "cell", disable = list(columns = c(0, 1, 2, 5)))  # Only columns 3,4 (Premium Receivables, Bad Debt) editable
@@ -315,6 +352,18 @@ server <- function(input, output, session) {
         `Premium Receivables` = 0,
         `ARC` = `Class wise RI Gross UPR Sum` - `Class wise RI DAC Sum` - `Premium Receivables`
       )
+    
+    # Add totals row
+    totals_row <- data.frame(
+      `IRA CLASS` = "TOTAL",
+      `Class wise RI Gross UPR Sum` = sum(df$`Class wise RI Gross UPR Sum`, na.rm = TRUE),
+      `Class wise RI DAC Sum` = sum(df$`Class wise RI DAC Sum`, na.rm = TRUE),
+      `Premium Receivables` = sum(df$`Premium Receivables`, na.rm = TRUE),
+      `ARC` = sum(df$`ARC`, na.rm = TRUE),
+      check.names = FALSE
+    )
+    df <- bind_rows(df, totals_row)
+    
     arcValues$data <- df
   })
 
@@ -331,6 +380,18 @@ server <- function(input, output, session) {
         `Premium Receivables` = 0,
         `ARC` = `Class wise RI Gross UPR Sum` - `Class wise RI DAC Sum` - `Premium Receivables`
       )
+    
+    # Add totals row
+    totals_row <- data.frame(
+      `IRA CLASS` = "TOTAL",
+      `Class wise RI Gross UPR Sum` = sum(df$`Class wise RI Gross UPR Sum`, na.rm = TRUE),
+      `Class wise RI DAC Sum` = sum(df$`Class wise RI DAC Sum`, na.rm = TRUE),
+      `Premium Receivables` = sum(df$`Premium Receivables`, na.rm = TRUE),
+      `ARC` = sum(df$`ARC`, na.rm = TRUE),
+      check.names = FALSE
+    )
+    df <- bind_rows(df, totals_row)
+    
     arcValues$data <- df
   })
 
@@ -372,7 +433,15 @@ server <- function(input, output, session) {
         autoWidth = TRUE,
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-        class = 'cell-border stripe'
+        class = 'cell-border stripe',
+        rowCallback = JS(
+          "function(row, data, index) {",
+          "  if (data[0] === 'TOTAL') {",
+          "    $(row).css('font-weight', 'bold');",
+          "    $(row).css('background-color', '#E8F4FD');",
+          "  }",
+          "}"
+        )
       ),
       rownames = FALSE,
       editable = list(target = "cell", disable = list(columns = c(0, 1, 2, 4)))  # Only column 3 (Premium Receivables) editable
@@ -436,7 +505,15 @@ server <- function(input, output, session) {
         autoWidth = TRUE,
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-        class = 'cell-border stripe'
+        class = 'cell-border stripe',
+        rowCallback = JS(
+          "function(row, data, index) {",
+          "  if (data[0] === 'TOTAL') {",
+          "    $(row).css('font-weight', 'bold');",
+          "    $(row).css('background-color', '#E8F4FD');",
+          "  }",
+          "}"
+        )
       ),
       rownames = FALSE
     )
