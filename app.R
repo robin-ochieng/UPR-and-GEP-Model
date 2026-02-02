@@ -18,6 +18,7 @@ source("modules/landingPageModule.R", local = TRUE)[1]
 source("modules/dataOverviewModule.R", local = TRUE)[1]
 source("modules/uprSummaries.R", local = TRUE)[1]
 source("modules/gepResultsModule.R", local = TRUE)[1]
+source("modules/nepResultsModule.R", local = TRUE)[1]
 source("modules/helperFunctions.R")
 
 
@@ -66,7 +67,8 @@ ui <- bs4DashPage(
       bs4SidebarMenuItem("LRC", tabName = "lrc", icon = icon("calculator")),
       bs4SidebarMenuItem("ARC", tabName = "arc", icon = icon("coins")),
       bs4SidebarMenuItem("Net LRC", tabName = "netLrc", icon = icon("balance-scale")),
-      bs4SidebarMenuItem("GEP Results", tabName = "gepResults", icon = icon("chart-line"))
+      bs4SidebarMenuItem("GEP Results", tabName = "gepResults", icon = icon("chart-line")),
+      bs4SidebarMenuItem("NEP Results", tabName = "nepResults", icon = icon("chart-area"))
     )),
     div(class = "sidebar-logo",
         img(src = "images/kenbright.png")
@@ -174,6 +176,9 @@ ui <- bs4DashPage(
       ),
       bs4TabItem(tabName = "gepResults",
         gepResultsUI("gep_results")
+      ),
+      bs4TabItem(tabName = "nepResults",
+        nepResultsUI("nep_results")
       )
     )
   ),
@@ -211,6 +216,8 @@ server <- function(input, output, session) {
   uprSummariesServer("upr_summaries", processedData)
 
   gepResultsServer("gep_results", processedData, cutoffYear)
+
+  nepResultsServer("nep_results", processedData, cutoffYear)
 
   # LRC Tab Logic - Using reactiveValues for editable table
   lrcValues <- reactiveValues(data = NULL)
