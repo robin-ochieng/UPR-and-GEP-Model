@@ -117,6 +117,14 @@ gepResultsServer <- function(id, processedData, cutoffYear) {
           group_by(`IRA CLASS`) %>%
           summarize(across(contains("_EP"), sum, na.rm = TRUE))
         
+        # Add totals row
+        totals_row <- summarized %>%
+          summarize(across(contains("_EP"), sum, na.rm = TRUE)) %>%
+          mutate(`IRA CLASS` = "TOTAL") %>%
+          select(`IRA CLASS`, everything())
+        
+        summarized <- bind_rows(summarized, totals_row)
+        
         # Apply formatting with commas to all summarized columns
         summarized <- summarized %>%
           mutate(across(contains("_EP"), scales::comma))
@@ -206,6 +214,14 @@ gepResultsServer <- function(id, processedData, cutoffYear) {
         summarized <- results %>%
           group_by(`IRA CLASS`) %>%
           summarize(across(contains("_NEP"), sum, na.rm = TRUE))
+        
+        # Add totals row
+        totals_row <- summarized %>%
+          summarize(across(contains("_NEP"), sum, na.rm = TRUE)) %>%
+          mutate(`IRA CLASS` = "TOTAL") %>%
+          select(`IRA CLASS`, everything())
+        
+        summarized <- bind_rows(summarized, totals_row)
         
         # Apply formatting with commas to all summarized columns
         summarized <- summarized %>%

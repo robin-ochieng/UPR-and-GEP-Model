@@ -169,21 +169,24 @@ uprSummariesServer <- function(id, processedData) {
     # Display class-wise UPR summarization with enhanced styling
     output$classWiseUPR <- renderDT({
       req(classWiseUPR())
-      datatable(classWiseUPR(), options = list(
-        pageLength = 30,
-        autoWidth = TRUE,
-        dom = 'Bfrtip',
-        buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-        class = 'cell-border stripe',
-        rowCallback = JS(
-          "function(row, data, index) {",
-          "  if (data[0] === 'TOTAL') {",
-          "    $(row).css('font-weight', 'bold');",
-          "    $(row).css('background-color', '#E8F4FD');",
-          "  }",
-          "}"
-        )
-      ))
+      datatable(
+        classWiseUPR(), 
+        options = list(
+          pageLength = 30,
+          autoWidth = TRUE,
+          dom = 'Bfrtip',
+          buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+          rowCallback = JS(
+            "function(row, data, index) {",
+            "  if (data[0] === 'TOTAL') {",
+            "    $(row).css('font-weight', 'bold');",
+            "    $(row).css('background-color', '#E8F4FD');",
+            "  }",
+            "}"
+          )
+        ),
+        class = 'cell-border stripe'
+      )
     })
 
     # Define download handler for the UPR table
