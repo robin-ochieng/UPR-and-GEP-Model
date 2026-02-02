@@ -1,5 +1,7 @@
 # Generate manifest.json for Posit Connect deployment
 # This script creates a manifest file with exact package versions from your system
+# Branch: lrc-model
+# App: LRC Model
 
 library(rsconnect)
 
@@ -15,8 +17,12 @@ rsconnect::writeManifest(
     "modules/dataOverviewModule.R",
     "modules/gepResultsModule.R",
     "modules/helperFunctions.R",
+    "modules/landingPageModule.R",
     "modules/uprSummaries.R",
-    "www/css/custom_styles.css"
+    "www/css/custom_styles.css",
+    "www/css/landing_page.css",
+    "www/favicon/kenbright.ico",
+    "www/images/kenbright.png"
   ),
   appPrimaryDoc = "app.R",
   contentCategory = "shiny"
@@ -24,4 +30,4 @@ rsconnect::writeManifest(
 
 cat("\n✓ manifest.json has been generated successfully!\n")
 cat("  Location: ", file.path(getwd(), "manifest.json"), "\n\n")
-cat("You can now commit this file to your repository for Git-based deployment.\n")
+cat("You can now commit this file to your 'lrc-model' branch for Git-based deployment to Posit Connect.\n")
